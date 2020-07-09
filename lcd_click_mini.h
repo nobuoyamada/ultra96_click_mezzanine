@@ -28,6 +28,7 @@ int LcdPinInit(XSpiPs *SpiI);
 
 int LcdCommandWrite(XSpiPs *SpiI, uint8_t data);
 int LcdDataWrite(XSpiPs *SpiI, uint8_t data);
+int LcdCharWrite(XSpiPs *SpiI, char char_data[]);
 
 int Write4bit(XSpiPs *SpiI, uint8_t data);
 
@@ -39,6 +40,10 @@ int EntryMode(XSpiPs *SpiI, uint8_t id, uint8_t s);
 
 int ClearDisplay(XSpiPs *SpiI);
 
-int MCP4161_setup(XSpiPs *SpiI, uint8_t contrast);
+int ReturnHome(XSpiPs *SpiI);
+
+int SetDdramAddress(XSpiPs *SpiI, uint8_t address);
+
+int MCP4161SetContrast(XSpiPs *SpiI, uint8_t contrast);
 
 #endif

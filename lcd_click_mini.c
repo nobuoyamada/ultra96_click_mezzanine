@@ -223,6 +223,23 @@ int DisplayOnOff(XSpiPs *SpiI, uint8_t disp, uint8_t cursor, uint8_t blink)
     return Status;
 }
 
+int SetDdramAddress(XSpiPs *SpiI, uint8_t address)
+{
+    int Status;
+    uint8_t data_temp;
+
+    if(address > 0x4F)
+        data_temp = 0x4F;
+    else
+        data_temp = address;
+
+    Status = LcdCommandWrite(SpiI, data_temp | 0x80);
+    if(Status != XST_SUCCESS){
+        printf("Error: SetDdramAddress\n");
+    }    
+    return Status;
+}
+
 int FunctionSet(XSpiPs *SpiI, uint8_t dl, uint8_t n, uint8_t f)
 {
     int Status;
@@ -263,39 +280,92 @@ int ClearDisplay(XSpiPs *SpiI)
     return Status;
 }
 
-int MCP4161_setup(XSpiPs *SpiI, uint8_t contrast)
+int ReturnHome(XSpiPs *SpiI)
 {
     int Status;
 
-    uint8_t buff_mcp3202[3];
-    buff_mcp3202[0] = 0x01;
-    buff_mcp3202[1] = 0xA0;
-    buff_mcp3202[2] = 0x00;
+    Status = LcdCommandWrite(SpiI, 0x02);
+    if(Status != XST_SUCCESS){
+        printf("Error: ReturnHome\n");
+    }    
+
+    return Status;
+}
+
+int MCP4161SetContrast(XSpiPs *SpiI, uint8_t contrast)
+{
+    int Status;
 
     uint8_t buff_mcp4146[2];
     buff_mcp4146[0] = 0x00;
     buff_mcp4146[1] = contrast;
 
     XSpiPs_SetSlaveSelect(SpiI, 0x2);
-/*
-    Status = XSpiPs_PolledTransfer(SpiI, buff_mcp3202, NULL, sizeof(buff_mcp3202));
-	if (Status != XST_SUCCESS) {
-		printf("Error: MCP3202_setup()\n");
-	} 
-*/
+
     Status = XSpiPs_PolledTransfer(SpiI, buff_mcp4146, NULL, sizeof(buff_mcp4146));
 	if (Status != XST_SUCCESS) {
 		printf("Error: MCP4161_setup()\n");
 	} 
-/*
-    buff_mcp3202[1] = 0xE0;
-    Status = XSpiPs_PolledTransfer(SpiI, buff_mcp3202, NULL, sizeof(buff_mcp3202));
-	if (Status != XST_SUCCESS) {
-		printf("Error: MCP3202_setup()\n");
-	}
-*/ 
-    //XSpiPs_SetSlaveSelect(SpiI, 0x1);
 
     return Status;
+}
 
+int LcdCharWrite(XSpiPs *SpiI, char char_data[])
+{
+    int Status;
+    uint8_t data;
+    int length = strlen(char_data);
+
+    for(int i=0; i < length; i++)
+    {
+        data = (uint8_t) char_data[i];
+
+        // Set RS
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x04);
+        if(Status != XST_SUCCESS){
+            printf("Error: Set RS\n");
+        }
+
+        // Set Data 7-4
+
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x04 |(data & 0xF0));
+        if(Status != XST_SUCCESS){
+            printf("Error: Set data 7-4\n");
+        }
+
+        // Set E
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x0C | (data & 0xF0));
+        if(Status != XST_SUCCESS){
+            printf("Error: Set E\n");
+        }
+
+        usleep(1);
+
+        // Clear E
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x04 | (data & 0xF0));
+        if(Status != XST_SUCCESS){
+            printf("Error: Clear E\n");
+        }
+
+        // Set Data 3-0
+
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x04 |(data << 4));
+        if(Status != XST_SUCCESS){
+            printf("Error: Set data 3-0\n");
+        }
+
+        // Set E
+        Status = MCP23S17_Write(SpiI, GPIOB, (data << 4) | 0x0C);
+        if(Status != XST_SUCCESS){
+            printf("Error: Clear E\n");
+        }
+        usleep(1);
+
+        // Clear E
+        Status = MCP23S17_Write(SpiI, GPIOB, 0x04 | (data << 4));
+        if(Status != XST_SUCCESS){
+            printf("Error: Clear E\n");
+        }
+    }
+    return Status;
 }

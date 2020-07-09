@@ -46,6 +46,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "platform.h"
 #include "xil_printf.h"
 #include "xparameters.h"
@@ -76,57 +77,70 @@ static axis3bit16_t data_raw_gyro;
 static float acceleration_mg[3];
 static float angular_rate_mdps[3];
 
-
 int main()
 {
-    u8 SendData[2];
-    u8 recvData[5];
+    char acc_data[10];
 
+    // Init each parameter
     init_platform();
     Init(&Iic);
     SPI_Init(&SpiI);
-
-
-
     memset(data_raw_acc.u8bit, 0x00, 3*sizeof(s16));
     memset(data_raw_gyro.u8bit, 0x00, 3*sizeof(s16));
+
+    // Init acc/gyro sensor
     i2c_switch_on(&Iic, CH0);
     acc_on_off(&Iic, ACC_ON);
     gyro_on_off(&Iic, GYRO_ON);
-    usleep(10000);
 
-    lsm6dsl_regdump(&Iic);
+    //lsm6dsl_regdump(&Iic);
 
-    MCP4161_setup(&SpiI, 0x40);
-    //usleep(10000);
+    // Set contrast of character LCD
+    MCP4161SetContrast(&SpiI, 0x40);
+
+    // character LCD initialize
     LcdPinInit(&SpiI);
-
     usleep(5000);
     FunctionSet(&SpiI, DL_4BIT, N_2LINE, F_5x8);
     usleep(1000);
-    DisplayOnOff(&SpiI, DISPON, CURSOR_ON, BLINK_OFF);
+    DisplayOnOff(&SpiI, DISPON, CURSOR_OFF, BLINK_OFF);
     usleep(500);
     ClearDisplay(&SpiI);
     usleep(2000);
     EntryMode(&SpiI, DIR_LEFT, NO_SCR_SHIFT);
     usleep(5000);
 
-    LcdDataWrite(&SpiI, 0x31);
-    LcdDataWrite(&SpiI, 0x32);
-    LcdDataWrite(&SpiI, 0x33);
-    /*
-
-        //lsm6dsl_acc_raw_get(&Iic, buff);
-        //lsm6dsl_acc_raw_get(&Iic, data_raw_acc.u8bit);
+    //LcdCharWrite(&SpiI, "ABCDEFGHIJ");
+    
+    while(1){
+        lsm6dsl_acc_raw_get(&Iic, data_raw_acc.u8bit);
         //lsm6dsl_gyro_raw_get(&Iic, data_raw_gyro.u8bit);
 
         acceleration_mg[0] = lsm6dsl_from_fs2g_to_mg(data_raw_acc.i16bit[0]);
         acceleration_mg[1] = lsm6dsl_from_fs2g_to_mg(data_raw_acc.i16bit[1]);
         acceleration_mg[2] = lsm6dsl_from_fs2g_to_mg(data_raw_acc.i16bit[2]);
-        angular_rate_mdps[0] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[0]); 
-        angular_rate_mdps[1] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[1]); 
-        angular_rate_mdps[2] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[2]); 
+        //angular_rate_mdps[0] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[0]); 
+        //angular_rate_mdps[1] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[1]); 
+        //angular_rate_mdps[2] = lsm6dsl_from_fs2000dps_to_mdps(data_raw_gyro.i16bit[2]); 
 
+        ReturnHome(&SpiI);
+        LcdCharWrite(&SpiI, "X:");
+        sprintf(acc_data, "%-6.1f", acceleration_mg[0]);
+        LcdCharWrite(&SpiI, acc_data);
+
+        LcdCharWrite(&SpiI, "Y:");
+        sprintf(acc_data, "%-6.1f", acceleration_mg[1]);
+        LcdCharWrite(&SpiI, acc_data);
+
+        SetDdramAddress(&SpiI, 0x40);
+
+        LcdCharWrite(&SpiI, "Z:");
+        sprintf(acc_data, "%-7.1f", acceleration_mg[2]);
+        LcdCharWrite(&SpiI, acc_data);
+
+        sleep(1);
+
+        /*
         
         for(int i=0; i<6; i=i+2)
             printf("data_raw_acc.i16bit[%d]: %02x%02x\n\r", i, data_raw_acc.u8bit[i+1],data_raw_acc.u8bit[i]);
@@ -140,20 +154,8 @@ int main()
         for(int i=0; i<3; i++)
             printf("angular_rate_mdps[%d]: %4.2f\n\r", i, angular_rate_mdps[i]);
         
-
-        //MCP23S17_Write(&SpiI, 0x00, 0x55);
-        //MCP23S17_Read(&SpiI, recvData, 0x00, 3);
-        //if(XSpiPs_PolledTransfer(&SpiI, SendData, recvData,sizeof(SendData)+3)!= XST_SUCCESS)
-        //xil_printf("Error: MCP23S17_read\n\r");
-
-        //printf("recvData[0]: %x\n", recvData[0]);
-        //printf("recvData[1]: %x\n", recvData[1]);
-        //printf("recvData[2]: %x\n", recvData[2]);
-        //printf("recvData[3]: %x\n", recvData[3]);
-        //printf("recvData[4]: %x\n", recvData[4]);
-        //XGpioPs_WritePin(&Gpio, 40, 0x1);
-    }
     */
+    }
 
     cleanup_platform();
     return 0;
